@@ -20,8 +20,6 @@ async function findNextWindowId(currentTab) {
     populate: true,
     windowTypes: ['normal'],
   });
-  console.log('findNextWindowId');
-  console.log(currentTab?.windowId);
   let currentWindowIndex = 0;
   let targetWindowId = currentTab?.windowId;
 
@@ -35,10 +33,6 @@ async function findNextWindowId(currentTab) {
     }
   });
 
-  // console.log('\n');
-  // console.log('currentWindow');
-  // console.log(currentWindow);
-
   if (
     // base check:
     allWindows.length > 1 &&
@@ -47,35 +41,12 @@ async function findNextWindowId(currentTab) {
   ) {
     targetWindowId =
       allWindows[(currentWindowIndex + 1) % allWindows.length]?.id;
-
-    // console.log('\n');
-    // console.log('targetWindowId');
-    // console.log(targetWindowId);
   }
   return targetWindowId;
 }
 
 async function moveCurrentTab(direction) {
   const currentTab = await getCurrentTab();
-
-  console.log('\n');
-  console.log('db 2, currentTab');
-  console.log(currentTab?.id);
-  console.log(currentTab?.index);
-  console.log('\n');
-  console.log('db 3, all windows');
-  // const currentWindow = await chrome.windows.getCurrent({
-  //   populate: true,
-  //   windowTypes: ['normal'],
-  // });
-  // console.log(currentWindow?.tabs?.length);
-  // console.log(currentWindow?.tabs?.slice(-1)?.id);
-  const allWindows = await chrome.windows.getAll({
-    populate: true,
-    windowTypes: ['normal'],
-  });
-  console.log(allWindows?.length);
-  console.log(allWindows?.filter((w) => w.id !== currentTab.windowId)?.length);
 
   if (currentTab?.id && typeof currentTab?.index === 'number') {
     let index = currentTab.index;
@@ -90,53 +61,14 @@ async function moveCurrentTab(direction) {
         index = 0;
         break;
       case END:
-        // index = -1;
-
-        // console.log('END');
-        // console.log(currentTab?.windowId);
         const targetWindowId = await findNextWindowId(currentTab);
-        const shouldMoveToNextWindow = targetWindowId !== currentTab?.windowId;
+        const moveTabToNextWindow = currentTab?.windowId !== targetWindowId;
         return chrome.tabs.move(currentTab.id, {
-          index: shouldMoveToNextWindow ? 0 : -1,
+          index: moveTabToNextWindow
+            ? 0 // beginning of next window
+            : -1, // end of current window
           windowId: targetWindowId,
         });
-
-        return 'WIP';
-
-        // move to next window if is already at end of window
-        const allWindows = await chrome.windows.getAll({
-          populate: true,
-          windowTypes: ['normal'],
-        });
-        let currentWindowPos = null;
-        const currentWindow = allWindows.find((windows, index) => {
-          if (windows.id === currentTab?.windowId) {
-            currentWindowPos = index;
-            return true;
-          } else {
-            return false;
-          }
-        });
-        console.log('\n');
-        console.log('currentWindow');
-        console.log(currentWindow);
-        if (
-          allWindows.length > 1 &&
-          currentTab.index === currentWindow.tabs.length - 1 // is last tab of current window
-        ) {
-          const targetWindowId =
-            allWindows[(currentWindowPos + 1) % allWindows.length]?.id;
-
-          console.log('\n');
-          console.log('targetWindowId');
-          console.log(targetWindowId);
-
-          return chrome.tabs.move(currentTab.id, {
-            index: 0,
-            windowId: targetWindowId,
-          });
-        }
-        break;
     }
     return chrome.tabs.move(currentTab.id, { index });
   }
