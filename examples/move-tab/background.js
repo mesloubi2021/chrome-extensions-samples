@@ -1,31 +1,50 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+const RIGHT = 'right';
+const LEFT = 'left';
+const START = 'start';
+const END = 'end';
 
-function moveSelectedTab(direction) {
-  chrome.tabs.getSelected((tab) => {
-
-    let index = tab.index;
-
-    switch (direction) {
-      case 'start':  index = 0;  break;
-      case 'end':    index = -1; break;
-      case 'left':   index = Math.max(0, index - 1); break;
-      case 'right':  index += 1; break;
-    }
-
-
-    chrome.tabs.move(tab.id, { index })
-  })
+// https://developer.chrome.com/docs/extensions/reference/tabs/#get-the-current-tab
+async function getCurrentTab() {
+  const tabs = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  });
+  return tabs?.[0];
 }
 
-chrome.commands.onCommand.addListener(function(command) {
+async function moveCurrentTab(direction) {
+  const currentTab = await getCurrentTab();
 
+  if (currentTab?.id && typeof currentTab?.index === 'number') {
+    let index = currentTab.index;
+    switch (direction) {
+      case RIGHT:
+        index += 1;
+        break;
+      case LEFT:
+        index = Math.max(0, index - 1);
+        break;
+      case START:
+        index = 0;
+        break;
+      case END:
+        // TODO move to next window if is already at end of window
+        index = -1;
+        break;
+    }
+    return chrome.tabs.move(currentTab.id, { index });
+  }
+}
+
+chrome.commands.onCommand.addListener(async function (command) {
   switch (command) {
-    case 'move-tab-right': return moveSelectedTab('right');
-    case 'move-tab-left':  return moveSelectedTab('left');
-    case 'move-tab-start': return moveSelectedTab('start');
-    case 'move-tab-end':   return moveSelectedTab('end');
-
+    case 'move-tab-right':
+      return moveCurrentTab(RIGHT);
+    case 'move-tab-left':
+      return moveCurrentTab(LEFT);
+    case 'move-tab-start':
+      return moveCurrentTab(START);
+    case 'move-tab-end':
+      return moveCurrentTab(END);
   }
 });
