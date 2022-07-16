@@ -1,0 +1,49 @@
+{
+   "author": "Josa Gesell",
+   "background": {
+      "persistent": false,
+      "scripts": [ "background.js" ]
+   },
+   "commands": {
+      "move-tab-end": {
+         "description": "Move Tab to End",
+         "suggested_key": {
+            "default": "Ctrl+Shift+Down",
+            "mac": "Command+Shift+Down"
+         }
+      },
+      "move-tab-left": {
+         "description": "Move Tab to Left",
+         "suggested_key": {
+            "default": "Ctrl+Shift+Left",
+            "mac": "Command+Shift+Left"
+         }
+      },
+      "move-tab-right": {
+         "description": "Move Tab to Right",
+         "suggested_key": {
+            "default": "Ctrl+Shift+Right",
+            "mac": "Command+Shift+Right"
+         }
+      },
+      "move-tab-start": {
+         "description": "Move Tab to Start",
+         "suggested_key": {
+            "default": "Ctrl+Shift+Up",
+            "mac": "Command+Shift+Up"
+         }
+      }
+   },
+   "description": "Move tabs with keyboard shortcuts",
+   "icons": {
+      "128": "icon-128.png",
+      "16": "icon-16.png",
+      "48": "icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAotDpPnR+1fvJz0erx1rQcTpsmjJ2AezCOk98hZPqo5vwqyyWbEHbuKBtTMeFSZ+wT1fDMTRspxltvWCTqF5HX7/68fwa8LR7iJBh3a3oQFRoUABvptqzox2dLUJCswYX1e/MZB823+q2fimNDYUt94eup1rH008Hli2iSepyLvJ7RyYNgLipr143uvxVZeigqOhGfZs0S4F3LOXGEqOC2cWQpr8NhxEUwTN+xXwYGAGGLDVKZ4P4RNMZIE7ivi0K/Frr1CQAsjNEmStCdHwptqN0KH1Gc96DwgBkopSpg4HVYNOCGPdin5ELijWR9rMBfFTIL/9Helyoj8tqaMPMewIDAQAB",
+   "manifest_version": 2,
+   "name": "Move Tab",
+   "permissions": [ "tabs" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.1"
+}
