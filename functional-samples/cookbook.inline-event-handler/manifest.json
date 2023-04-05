@@ -1,0 +1,20 @@
+{
+  "name": "Inline event handler",
+  "description": "Visit https://dotproto-inline-event-demo.glitch.me/ to see this extension in action.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {},
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [{
+    "matches": ["*://dotproto-inline-event-demo.glitch.me/*"],
+    "js": ["content.js"]
+  }],
+  "permissions": [
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://dotproto-inline-event-demo.glitch.me/*"
+  ]
+}
