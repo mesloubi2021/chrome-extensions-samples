@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "upload.wikimedia.org/wikipedia",
+      "resourceTypes": [
+        "image",
+        "webbundle",
+        "websocket",
+        "webtransport"
+      ]
+    }
+  }
+]
