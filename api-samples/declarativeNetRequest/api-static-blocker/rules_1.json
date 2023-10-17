@@ -4,13 +4,10 @@
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "upload.wikimedia.org/wikipedia",
-      "resourceTypes": [
-        "image",
-        "webbundle",
-        "websocket",
-        "webtransport"
-      ]
+      "urlFilter": "clients6.google.com/batch/drive/v2internal",
+      "initiatorDomains": ["docs.google.com"],
+      "resourceTypes": ["xmlhttprequest"],
+      "requestMethod": ["post"]
     }
   }
 ]
