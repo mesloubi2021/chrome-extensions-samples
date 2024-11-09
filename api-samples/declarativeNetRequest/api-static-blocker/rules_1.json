@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "clients6.google.com/batch/drive/v2internal",
+      "initiatorDomains": ["docs.google.com"],
+      "resourceTypes": ["xmlhttprequest"],
+      "requestMethod": ["post"]
+    }
+  }
+]
