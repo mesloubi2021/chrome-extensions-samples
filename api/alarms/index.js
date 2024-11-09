@@ -1,16 +1,22 @@
-let display = document.getElementById('display');
-let form = document.querySelector('.create-alarm');
-let clearButton = document.getElementById('clear-display');
-let refreshButton = document.getElementById('refresh-display');
+// Copyright 2021 Google LLC
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
 
-let alarmManager = new AlarmManager({ display });
+const display = document.querySelector('.alarm-display');
+const log = document.querySelector('.alarm-log');
+const form = document.querySelector('.create-alarm');
+const clearButton = document.getElementById('clear-display');
+const refreshButton = document.getElementById('refresh-display');
+const pad = (val, len = 2) => val.toString().padStart(len, '0');
 
 // DOM event bindings
 
 //// Alarm display buttons
 
-clearButton.addEventListener('click', cancelAllAlarms);
-refreshButton.addEventListener('click', refreshAlarmDisplay);
+clearButton.addEventListener('click', () => manager.cancelAllAlarms());
+refreshButton.addEventListener('click', () => manager.refreshDisplay());
 
 //// New alarm form
 
@@ -19,185 +25,161 @@ form.addEventListener('submit', (event) => {
   let formData = new FormData(form);
   let data = Object.fromEntries(formData);
 
+  // Extract form values
   let name = data['alarm-name'];
   let delay = Number.parseFloat(data['time-value']);
   let delayFormat = data['time-format'];
   let period = Number.parseFloat(data['period']);
 
-  createAlarm({ name, delay, delayFormat, period });
-});
-
-// Initialize display
-
-refreshAlarmDisplay();
-
-// ???
-
-function destroyAllAlarms() {
-  [...display.children].forEach(alarm => {
-    alarm.destroy();
-  })
-}
-
-function cancelAllAlarms() {
-  chrome.alarms.clearAll();
-  destroyAllAlarms();
-}
-
-function refreshAlarmDisplay() {
-  destroyAllAlarms();
-  chrome.alarms.getAll((alarms) => {
-    for (let alarm of alarms) {
-      let el = document.createElement('crx-alarm');
-      el.setAttribute('alarm-name', alarm.name);
-      display.appendChild(el);
-    }
-  });
-}
-
-/**
- * @param {Object} options
- * @param {string} options.name
- * @param {number} options.delay
- * @param {"ms"|"min"} options.delayFormat;
- * @param {number} options.period;
- */
-function createAlarm(options) {
+  // Prepare alarm info for creation call
   let alarmInfo = {};
 
-  if (options.delayFormat === 'ms') {
+  if (delayFormat === 'ms') {
     // Specified in milliseconds, use `when` property
-    //
-    // This takes a fixed timestamp in ms since Unix epoch.
-    alarmInfo.when = Date.now() + options.delay;
-  } else if (options.delayFormat === 'min') {
+    alarmInfo.when = Date.now() + delay;
+  } else if (delayFormat === 'min') {
     // specified in minutes, use `delayInMinutes` property
-    alarmInfo.delayInMinutes = options.delay;
-  } else {
-    throw new Error(`Unknown time format provided ("${options.delayFormat}"). Known values are "ms" and "min".`);
+    alarmInfo.delayInMinutes = delay;
   }
 
-  if (options.period) {
-    alarmInfo.periodInMinutes = options.period;
+  if (period) {
+    alarmInfo.periodInMinutes = period;
   }
 
-  chrome.alarms.create(options.name, alarmInfo);
+  // Create the alarm – this uses the same signature as chrome.alarms.create
+  manager.createAlarm(name, alarmInfo);
+});
 
-  let el = display.querySelectorAll(`[alarm-name="${options.name}"]`);
+class AlarmManager {
+  constructor(display, log) {
+    this.displayElement = display;
+    this.logElement = log;
 
-  // Instantiate crx-alarm instance for this alarm
-  let alarm = document.createElement('crx-alarm');
-  alarm.setAttribute('alarm-name', options.name);
-  display.appendChild(alarm);
-}
+    this.logMessage('Manager: initializing demo');
 
-// Alarm Element
-
-class ExtensionAlarm extends HTMLElement {
-  static template = document.createElement('template');
-
-  constructor() {
-    super();
-
-    // Instantiate template
-    let template = ExtensionAlarm.template.content.cloneNode(true);
-
-    this._shadowRoot = this.attachShadow({ mode: 'open' });
-    this._shadowRoot.appendChild(template);
-
-    // Store references to dynamically driven UI values
-    this.rootEl = this._shadowRoot.querySelector('.alarm-info');
-    this.nameEl = this._shadowRoot.querySelector('.alarm__name');
-    this.statusEl = this._shadowRoot.querySelector('.alarm__status');
-    this.scheduleEl = this._shadowRoot.querySelector('.alarm__schedule');
-    this.periodEl = this._shadowRoot.querySelector('.alarm__period');
-
-    this.boundAlarmHandler = this.handleAlarmFired.bind(this);
+    this.displayElement.addEventListener('click', this.handleCancelAlarm);
+    chrome.alarms.onAlarm.addListener(this.handleAlarm);
   }
 
-  static get observedAttributes() {
-    return ['alarm-name'];
+  logMessage(message) {
+    let date = new Date();
+    let pad = (val, len = 2) => val.toString().padStart(len, '0');
+    let h = pad(date.getHours());
+    let m = pad(date.getMinutes());
+    let s = pad(date.getSeconds());
+    let ms = pad(date.getMilliseconds(), 3);
+    let time = `${h}:${m}:${s}.${ms}`;
+
+    let logLine = document.createElement('div');
+    logLine.textContent = `[${time}] ${message}`;
+
+    // Log events in reverse chronological order
+    this.logElement.insertBefore(logLine, this.logElement.firstChild);
   }
 
-  attributeChangedCallback(attName, _oldAttrValue, newAttrValue) {
-    if (attName === 'alarm-name') {
-      chrome.alarms.get(newAttrValue, alarm => this.render(alarm));
-      this.unbind();
-      chrome.alarms.onAlarm.addListener(this.boundAlarmHandler);
-    }
+  handleAlarm = async (alarm) => {
+    let json = JSON.stringify(alarm);
+    this.logMessage(`Alarm "${alarm.name}" fired\n${json}}`);
+    await this.refreshDisplay();
   }
 
-  render(alarm) {
-    if (!alarm) {
-      throw new Error('Attempting to render an alarm, but no alarm data provided');
-    }
-
-    // Render current alarm data
-    this.nameEl.innerText = alarm.name;
-
-    let date = new Date(alarm.scheduledTime);
-    this.scheduleEl.innerText = date.toISOString();
-
-    if (alarm.scheduledTime > Date.now()) {
-      this.statusEl.innerText = 'Scheduled';
-    }
-
-    if (alarm.periodInMinutes) {
-      this.periodEl.innerText = `Every ${alarm.periodInMinutes} minute(s)`
-    } else {
-      this.periodEl.innerText = 'One-time';
-    }
-  }
-
-  handleAlarmFired(alarm) {
-    // We're registered for updates on all alarms, but we only care about our own
-    if (alarm.name !== this.getAttribute('alarm-name')) {
+  handleCancelAlarm = async (event) => {
+    if (!event.target.classList.contains('alarm-row__cancel-button')) {
       return;
     }
 
-    if (alarm.periodInMinutes) {
-      this.render(alarm);
-    } else {
-      this.rootEl.classList.add('alarm-info--finished');
-      this.statusEl.innerText = 'Completed';
-      this.unbind();
+    let name = event.target.parentElement.dataset.name;
+    await this.cancelAlarm(name);
+    await this.refreshDisplay();
+  }
+
+  async cancelAlarm(name) {
+    // TODO: Remove custom promise wrapper once the Alarms API supports promises
+    return new Promise((resolve) => {
+      chrome.alarms.clear(name, (wasCleared) => {
+        if (wasCleared) {
+          this.logMessage(`Manager: canceled alarm "${name}"`);
+        } else {
+          this.logMessage(`Manager: could not canceled alarm "${name}"`);
+        }
+
+        resolve(wasCleared);
+      });
+    });
+  }
+
+  // Thin wrapper around alarms.create to log creation event
+  createAlarm(name, alarmInfo) {
+    chrome.alarms.create(name, alarmInfo);
+    let json = JSON.stringify(alarmInfo, null, 2).replace(/\s+/g, ' ');
+    this.logMessage(`Created "${name}"\n${json}`);
+    this.refreshDisplay();
+  }
+
+  renderAlarm(alarm, isLast) {
+    let alarmEl = document.createElement('div');
+    alarmEl.classList.add('alarm-row');
+    alarmEl.dataset.name = alarm.name;
+    alarmEl.textContent = JSON.stringify(alarm, 0, 2) + (isLast ? '' : ',');
+
+    let cancelButton = document.createElement('button');
+    cancelButton.classList.add('alarm-row__cancel-button');
+    cancelButton.textContent = 'cancel';
+    alarmEl.appendChild(cancelButton);
+
+    this.displayElement.appendChild(alarmEl);
+  }
+
+  async cancelAllAlarms() {
+    // TODO: Remove custom promise wrapper once the Alarms API supports promises
+    return new Promise((resolve) => {
+      chrome.alarms.clearAll((wasCleared) => {
+        if (wasCleared) {
+          this.logMessage(`Manager: canceled all alarms"`);
+        } else {
+          this.logMessage(`Manager: could not canceled all alarms`);
+        }
+
+        resolve(wasCleared);
+      });
+    })
+  }
+
+  async populateDisplay() {
+    // TODO: Remove custom promise wrapper once the Alarms API supports promises
+    return new Promise((resolve) => {
+      chrome.alarms.getAll((alarms) => {
+        for (let [index, alarm] of alarms.entries()) {
+          let isLast = index === alarms.length - 1;
+          this.renderAlarm(alarm, isLast);
+        }
+        resolve();
+      });
+    });
+  }
+
+  // Simple locking mechanism to prevent multiple concurrent refreshes from rendering duplicate
+  // entries in the alarms list
+  #refreshing = false;
+
+  async refreshDisplay() {
+    if (this.#refreshing) { return } // refresh in progress, bail
+
+    this.#refreshing = true;         // acquire lock
+    try {
+      await Promise.all([
+        this.clearDisplay(),
+        this.populateDisplay(),
+      ]);
+    } finally {
+      this.#refreshing = false;      // release lock
     }
   }
 
-  unbind() {
-    if (this.boundAlarmHandler) {
-      chrome.alarms.onAlarm.removeListener(this.boundAlarmHandler);
-    }
-  }
-
-  destroy() {
-    this.unbind();
-    this.parentElement.removeChild(this);
+  async clearDisplay() {
+    this.displayElement.textContent = '';
   }
 }
 
-ExtensionAlarm.template.innerHTML = `
-<link rel="stylesheet" href="index.css">
-<div class="alarm-info">
-  <table class="alarm-info__table">
-    <tr>
-      <th class="alarm-info-label">Name</th>
-      <td class="alarm__name"></td>
-    </tr>
-    <tr>
-      <th class="alarm-info-label">Status</th>
-      <td class="alarm__status"></td>
-    </tr>
-    <tr>
-      <th class="alarm-info-label">Next&nbsp;Tick</th>
-      <td class="alarm__schedule"></td>
-    </tr>
-    <tr>
-      <th class="alarm-info-label">Period</th>
-      <td class="alarm__period"></td>
-    </tr>
-  </table>
-</div>
-`;
-
-customElements.define('crx-alarm', ExtensionAlarm);
+let manager = new AlarmManager(display, log);
+manager.refreshDisplay();
